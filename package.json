@@ -1,0 +1,11 @@
+{
+  "name": "Mcp",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "nodejs-websocket": "~1.7.1"
+  }
+}
