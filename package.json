@@ -1,11 +1,15 @@
 {
-  "name": "Mcp",
-  "version": "0.0.1",
+  "name": "mcp-notif",
+  "version": "0.0.0",
+  "description": "A simple chat client using socket.io",
+  "main": "index.js",
   "private": true,
-  "scripts": {
-    "start": "node ./bin/www"
-  },
+  "license": "BSD",
   "dependencies": {
-    "nodejs-websocket": "~1.7.1"
+    "express": "3.4.8",
+    "socket.io": "1.3.5"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }
