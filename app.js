@@ -1,76 +1,71 @@
-// Setup basic express server
-var express = require('express');
+var http = require("http");
+var express = require("express");
 var app = express();
-var server = require('http').createServer(app);
-/// var io = require('../..')(server);
-var io = require('socket.io')(server);
-var port = process.env.PORT || 3000;
 
-server.listen(port, function () {
-  console.log('Server listening at port %d', port);
+app.set('port', process.env.PORT || 3000);
+
+var server = app.listen(app.get('port'), function() {
+	console.log('Server listening on port ' + server.address().port);
+	server.setTimeout(1200000, function() {
+        console.log('Timed out');
+	});
 });
 
-// Routing
-app.use(express.static(__dirname + '/public'));
+// ---------- Shared globals ----------
+g_printers = [];
 
-// Chatroom
+var app_httpget = require('./app_httpget.js');
+app.use('/httpget', app_httpget);
 
-var numUsers = 0;
+var app_ws = require('./app_ws.js');
+app.use('/ws', app_ws);
 
-io.on('connection', function (socket) {
-  var addedUser = false;
-
-  // when the client emits 'new message', this listens and executes
-  socket.on('new message', function (data) {
-    // we tell the client to execute 'new message'
-    socket.broadcast.emit('new message', {
-      username: socket.username,
-      message: data
-    });
-  });
-
-  // when the client emits 'add user', this listens and executes
-  socket.on('add user', function (username) {
-    if (addedUser) return;
-
-    // we store the username in the socket session for this client
-    socket.username = username;
-    ++numUsers;
-    addedUser = true;
-    socket.emit('login', {
-      numUsers: numUsers
-    });
-    // echo globally (all clients) that a person has connected
-    socket.broadcast.emit('user joined', {
-      username: socket.username,
-      numUsers: numUsers
-    });
-  });
-
-  // when the client emits 'typing', we broadcast it to others
-  socket.on('typing', function () {
-    socket.broadcast.emit('typing', {
-      username: socket.username
-    });
-  });
-
-  // when the client emits 'stop typing', we broadcast it to others
-  socket.on('stop typing', function () {
-    socket.broadcast.emit('stop typing', {
-      username: socket.username
-    });
-  });
-
-  // when the user disconnects.. perform this
-  socket.on('disconnect', function () {
-    if (addedUser) {
-      --numUsers;
-
-      // echo globally that this client has left
-      socket.broadcast.emit('user left', {
-        username: socket.username,
-        numUsers: numUsers
-      });
-    }
-  });
+// ---------- Default page: show usage ----------
+app.get('/', function(req, res) {
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.setHeader('cache-control', 'no-cache');
+    var body = "<html><b>Common API from PC/service side:</b>"
+    body += "<br>  There are " + g_printers.length + " printer(s) waiting to be notified.";
+    body += "<br>  <a href='notify'>notify</a>";
+    body += "<hr><b>API to wait for job using hanging HTTP method:</b>";
+    body += "<br>  <a href='httpget/wait'>httpget/wait</a> (expect text response '.')";
+    body += "<hr><b>API to wait for job using Websocket method:</b>";
+    body += "<br>  <a href='ws:ws/wait'>ws/wait</a> (expect '.' character as response)";
+    body += "</html>";
+    res.end(body);
 });
+
+// ---------- Status and Notification APIs ----------
+function DoNotify(req, res) {
+    var httpStatus;
+    var body;
+	if (g_printers.length > 0) {
+		body = "Notifying " + g_printers.length + " printers...";
+        for (var i = 0; i < g_printers.length; ++i) {
+            g_printers[i].Res.writeHead(200, {"Content-Type": "text/plain"});
+            g_printers[i].Res.end('.');
+        }
+		g_printers = [];
+	} else {
+		body = "No printer currently waiting.";
+	}
+    console.log(body);
+    res.writeHead(200, {"Content-Type": "text/plain"});
+    res.end(body);
+};
+
+app.get('/status', function(req, res) {
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.setHeader('cache-control', 'no-cache');
+    res.end("<html>There are currently <b>" + g_printers.length + "</b> printers waiting.</html>");
+});
+
+app.get('/notify', function(req, res) {
+    DoNotify(req, res);
+});
+
+app.put('/notify', function(req, res) {
+    DoNotify(req, res);
+});
+
+module.exports = app;
