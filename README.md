@@ -1,25 +1,8 @@
+One-time Azure deployment instructions:
+1. Set up a Linux web service for Node.JS
+2. Have it sync to this repo
+3. Under web service's Application settings, add "WebSockets=On" (key value pair).
 
-# Socket.IO Chat
-
-A simple chat demo for socket.io
-
-## How to use
-
-```
-$ cd socket.io
-$ npm install
-$ cd examples/chat
-$ npm install
-$ npm start
-```
-
-And point your browser to `http://localhost:3000`. Optionally, specify
-a port by supplying the `PORT` env variable.
-
-## Features
-
-- Multiple users can join a chat room by each entering a unique username
-on website load.
-- Users can type chat messages to the chat room.
-- A notification is sent to all users when a user joins or leaves
-the chatroom.
+Usage:
+- See the root of the web site
+- To test printer notification via Websocket, establish a websocket connection (you can use "Simple WebSocket Client" chrome extension) to ws://<hostname>/ws/wait (e.g., ws://mscps-notif.azurewebsites.net/ws/wait). You can use a webbrowser to generate the notification. The notification arrives via websocket as a single dot ('.') char.
