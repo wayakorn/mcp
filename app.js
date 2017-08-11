@@ -61,12 +61,19 @@ app.get('/', function(req, res) {
 function notifyPrinter(req, res) {
     var httpStatus;
     var body;
+    var removeList = [];
 	if (m_printers.length > 0) {
 		body = "Notifying " + m_printers.length + " printer(s)...";
         for (var i = 0; i < m_printers.length; ++i) {
-            m_printers[i].Notify(m_printers[i].Value);
+            // Call the Notify handler
+            if (m_printers[i].Notify(m_printers[i].Value)) {
+                removeList.push(m_printers[i].Key);
+            }
         }
-		m_printers = [];
+        // Remove printers whose Notify handler wish to be removed
+        for (var i = 0; i < removeList.length; ++i) {
+            g_findPrinter(removeList[i], true);
+        }
 	} else {
 		body = "No printer currently waiting.";
 	}

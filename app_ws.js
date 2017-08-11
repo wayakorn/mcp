@@ -6,12 +6,15 @@ var wsserver = require("ws").Server;
 
 // This is called when the printer gets notified of a new job
 function m_notify(websocket) {
+    var remove = false;
     try {
         websocket.send('.');
     }
     catch (err) {
         console.log("[app_ws.js] encountered exception while trying to send data over websocket: " + err.toString());
+        remove = true;
     }
+    return remove;
 }
 
 var m_wss = new wsserver({server: g_server});

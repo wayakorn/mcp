@@ -2,9 +2,11 @@ var express = require('express');
 var router = express.Router();
 
 // This is called when the printer gets notified of a new job
+// Return true => remove the printer
 function m_notify(res) {
     res.writeHead(200, {"Content-Type": "text/plain"});
     res.end('.');
+    return true;
 }
 
 router.get('/wait', function(req, res) {
