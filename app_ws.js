@@ -6,7 +6,12 @@ var wsserver = require("ws").Server;
 
 // This is called when the printer gets notified of a new job
 function m_notify(websocket) {
-    websocket.send('.');
+    try {
+        websocket.send('.');
+    }
+    catch (err) {
+        console.log("[app_ws.js] encountered exception while trying to send data over websocket: " + err.toString());
+    }
 }
 
 var m_wss = new wsserver({server: g_server});
@@ -17,8 +22,10 @@ m_wss.on("connection", function (ws) {
     });
     ws.on("close", function () {
         console.log("[app_ws.js] websocket connection close");
-        // TODO: call FindPrinter(remove=true) here
-        m_printer = null;
+        var printer = g_findPrinter(ws, true);
+        if (printer != null) {
+            console.log("[app_ws.js] printer removed");
+        }
     });
 
     var printer = g_findPrinter(ws, false);
@@ -32,15 +39,5 @@ m_wss.on("connection", function (ws) {
 });
 console.log("[app_ws.js] websocket server created");
 
-// This is called when the printer gets notified of a new job
-
-router.get('/notify', function(req, res) {
-    console.log("[app_ws.js] notify called");
-    
-    // TODO: call FindPrinter here
-    if (m_printers.length > 0) {
-        m_printers[0].Websocket.send('.');
-    }
-});
 
 module.exports = router;
