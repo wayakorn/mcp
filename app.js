@@ -2,18 +2,25 @@ var http = require("http");
 var express = require("express");
 var app = express();
 
-app.set('port', process.env.PORT || 3000);
+app.set("port", process.env.PORT || 3000);
 
-g_server = app.listen(app.get('port'), function() {
-	console.log('Server listening on port ' + g_server.address().port);
-	g_server.setTimeout(1200000, function() {
-        console.log('Timed out');
-	});
+// ---------- Globals ----------
+g_verbose = false;
+
+g_getClientInfo = function(clientSocket) {
+    return clientSocket.remoteAddress.toString() + ":" + clientSocket.remotePort.toString();
+}
+
+g_server = app.listen(app.get("port"), function() {
+    console.log("Server listening on port " + g_server.address().port);
+    g_server.setTimeout(1200000, function(socket) {
+        console.log("Connection " + g_getClientInfo(socket) + " still alive.");
+    });
 });
 
 var m_printers = [];
 
-g_findPrinter = function findPrinter(key, remove) {
+g_findPrinter = function(key, remove) {
     var result = null;
     var printers = [];
     for (var i = 0; i < m_printers.length; ++i) {
@@ -32,20 +39,32 @@ g_findPrinter = function findPrinter(key, remove) {
     return result;
 };
 
-g_addPrinter = function addPrinter(printer) {
+g_addPrinter = function(printer) {
+    var oldPrinter = g_findPrinter(printer.Key, true);
+    if (oldPrinter != null) {
+        console.log("[app.js] WARNING: duplicate printer added, the previous entry has been removed.")
+    }
     m_printers.push(printer);
 };
 
-var app_httpget = require('./app_httpget.js');
-app.use('/httpget', app_httpget);
+g_getPrinterCount = function() {
+    return m_printers.length;
+};
 
-var app_ws = require('./app_ws.js');
-app.use('/ws', app_ws);
+g_removeAllPrinters = function() {
+    m_printers = [];
+};
+
+var app_httpget = require("./app_httpget.js");
+app.use("/httpget", app_httpget);
+
+var app_ws = require("./app_ws.js");
+app.use("/ws", app_ws);
 
 // ---------- Default page: show usage ----------
-app.get('/', function(req, res) {
-    res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.setHeader('cache-control', 'no-cache');
+app.get("/", function(req, res) {
+    res.setHeader("content-type", "text/html; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
     var body = "<html><b>Common API from PC/service side:</b>"
     body += "<br>  There are " + m_printers.length + " printer(s) waiting to be notified.";
     body += "<br>  <a href='notify'>notify</a>";
@@ -57,7 +76,7 @@ app.get('/', function(req, res) {
     res.end(body);
 });
 
-// ---------- Status API ----------
+// ---------- Notification APIs ----------
 function notifyPrinter(req, res) {
     var httpStatus;
     var body;
@@ -66,7 +85,7 @@ function notifyPrinter(req, res) {
 		body = "Notifying " + m_printers.length + " printer(s)...";
         for (var i = 0; i < m_printers.length; ++i) {
             // Call the Notify handler
-            if (m_printers[i].Notify(m_printers[i].Value)) {
+            if (m_printers[i].Notify(m_printers[i])) {
                 removeList.push(m_printers[i].Key);
             }
         }
@@ -82,29 +101,35 @@ function notifyPrinter(req, res) {
     res.end(body);
 };
 
-app.get('/notify', function(req, res) {
+app.get("/notify", function(req, res) {
     notifyPrinter(req, res);
 });
 
-app.put('/notify', function(req, res) {
-    notifyPrinter(req, res);
-});
-
-// This route is provided for back compat only
-app.get('/mcp/notify', function(req, res) {
+app.put("/notify", function(req, res) {
     notifyPrinter(req, res);
 });
 
 // This route is provided for back compat only
-app.put('/mcp/notify', function(req, res) {
+app.get("/mcp/notify", function(req, res) {
     notifyPrinter(req, res);
 });
 
-// ---------- Notification API ----------
-app.get('/status', function(req, res) {
-    res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.setHeader('cache-control', 'no-cache');
+// This route is provided for back compat only
+app.put("/mcp/notify", function(req, res) {
+    notifyPrinter(req, res);
+});
+
+// ---------- Status APIs ----------
+app.get("/status", function(req, res) {
+    res.setHeader("content-type", "text/html; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
     res.end("<html>There are currently <b>" + m_printers.length + "</b> printers waiting.</html>");
+});
+
+app.get("/count", function(req, res) {
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
+    res.end(m_printers.length.toString());
 });
 
 
