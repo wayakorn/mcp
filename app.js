@@ -18,8 +18,13 @@ g_server = app.listen(app.get("port"), function() {
     });
 });
 
+// Active notification sessions representing the connections to the printer or proxy.
 var m_printers = [];
 
+//
+// This function looks up the outstanding notification sessions, optionally removes the session
+// from the list, and returns it.
+//
 g_findPrinter = function(key, remove) {
     var result = null;
     var printers = [];
@@ -68,64 +73,85 @@ app.get("/", function(req, res) {
     var body = "<html><b>Common API from PC/service side:</b>"
     body += "<br>  There are " + m_printers.length + " printer(s) waiting to be notified.";
     body += "<br>  <a href='notify'>notify</a>";
+    body += "<br>  <a href='notify/7c518235-4e72-4563-a0d6-861dff98f1d1'>notify/7c518235-4e72-4563-a0d6-861dff98f1d1</a> (for example)";
     body += "<hr><b>API to wait for job using hanging HTTP method:</b>";
     body += "<br>  <a href='httpget/wait'>httpget/wait</a> (expect text response '.')";
+    body += "<br>  <a href='httpget/wait/7c518235-4e72-4563-a0d6-861dff98f1d1'>httpget/wait/7c518235-4e72-4563-a0d6-861dff98f1d1</a> (expect text response '.')";
     body += "<hr><b>API to wait for job using Websocket method:</b>";
-    body += "<br>  <a href='ws://<host>/ws/wait'>ws://<host>/ws/wait</a> (expect '.' character as response)";
+    body += "<br>  ws://mscps-notif/ws/wait (expect '.' character as response)";
+    body += "<br>  ws://mscps-notif/ws/wait/7c518235-4e72-4563-a0d6-861dff98f1d1 (expect '.' character as response)";
     body += "</html>";
     res.end(body);
 });
 
 // ---------- Notification APIs ----------
-function notifyPrinter(req, res) {
-    var httpStatus;
+//
+// This function iterates through the outstanding notification sessions, compares if the session
+// matches the provided 'printerId' filter, then calls the appropriate Notify() function.
+// The session is forgotten if the protocol-dependent Notify() function indicates that the session
+// should be dropped (by returning true).
+//
+function m_notifyPrinter(req, res, printerId) {
     var body;
+    var notifyList = [];
     var removeList = [];
-	if (m_printers.length > 0) {
-		body = "Notifying " + m_printers.length + " printer(s)...";
-        for (var i = 0; i < m_printers.length; ++i) {
-            // Call the Notify handler
-            if (m_printers[i].Notify(m_printers[i])) {
-                removeList.push(m_printers[i].Key);
-            }
+    // Build the notifyList
+    for (var i = 0; i < m_printers.length; ++i) {
+        if (printerId == null || (m_printers[i].Id && m_printers[i].Id == printerId)) {
+            notifyList.push(m_printers[i]);
         }
-        // Remove printers whose Notify handler wish to be removed
-        for (var i = 0; i < removeList.length; ++i) {
-            g_findPrinter(removeList[i], true);
+    }
+    // Call the Notify handler
+    body = "Notifying " + notifyList.length + " printer(s)...";
+    for (var i = 0; i < notifyList.length; ++i) {
+        if (notifyList[i].Notify(notifyList[i])) {
+            removeList.push(notifyList[i].Key);
         }
-	} else {
-		body = "No printer currently waiting.";
-	}
+        if (g_verbose) {
+            console.log("[app.js] printer {" + notifyList[i].Key.toString() + " (id=" + notifyList[i].Id + ")} notified");
+        }
+    }
+    // Remove the printers whose Notify handler is set for removal
+    for (var i = 0; i < removeList.length; ++i) {
+        g_findPrinter(removeList[i], true);
+    }
     console.log(body);
     res.writeHead(200, {"Content-Type": "text/plain"});
     res.end(body);
 };
 
+//
+// This GET endpoint notifies all outstanding notification sessions.
+//
 app.get("/notify", function(req, res) {
-    notifyPrinter(req, res);
+    m_notifyPrinter(req, res, null);
 });
 
-app.put("/notify", function(req, res) {
-    notifyPrinter(req, res);
-});
-
-// This route is provided for back compat only
-app.get("/mcp/notify", function(req, res) {
-    notifyPrinter(req, res);
-});
-
-// This route is provided for back compat only
-app.put("/mcp/notify", function(req, res) {
-    notifyPrinter(req, res);
+//
+// This GET endpoint notifies the sessions whose ID matches.
+// E.g., if "/notify/123456" is given, the notification is processed on sessions whose [printer] ID
+// is "123456".
+//
+app.get("/notify/:printerId", function(req, res) {
+    var printerId = req.params.printerId;
+    m_notifyPrinter(req, res, printerId);
 });
 
 // ---------- Status APIs ----------
+//
+// This GET endpoint returns the number of active notification sessions, in HTML.
+// It is used by the notification web portal.
+//
 app.get("/status", function(req, res) {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
     res.end("<html>There are currently <b>" + m_printers.length + "</b> printers waiting.</html>");
 });
 
+//
+// Similar to /status, this endpoint returns the session count, but in plain text.
+// It is used by the notif-test service.
+//
 app.get("/count", function(req, res) {
     res.setHeader("content-type", "text/plain; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
