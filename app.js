@@ -70,14 +70,15 @@ app.use("/ws", app_ws);
 app.get("/", function(req, res) {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
-    var body = "<html><b>Example calls from PC or the FCP service side:</b>"
+    var body = "<html><b>Example calls from FCP service to notify that a new print job is available:</b>"
     body += "<br>  There are " + m_printers.length + " printer(s) waiting to be notified.";
     body += "<br>  <a href='notify'>notify</a>";
-    body += "<br>  <a href='notify/7c518235-4e72-4563-a0d6-861dff98f1d1'>notify/7c518235-4e72-4563-a0d6-861dff98f1d1</a> (for example)";
-    body += "<hr><b>API to wait for job using hanging HTTP method:</b>";
+    body += "<br>  <a href='mcp/notify'>mcp/notify</a> (deprecated)";
+    body += "<br>  <a href='notify/7c518235-4e72-4563-a0d6-861dff98f1d1'>notify/7c518235-4e72-4563-a0d6-861dff98f1d1</a>";
+    body += "<hr><b>API intended to be called by printer/proxy to wait for job using hanging HTTP GET:</b>";
     body += "<br>  <a href='httpget/wait'>httpget/wait</a> (expect text response '.')";
     body += "<br>  <a href='httpget/wait/7c518235-4e72-4563-a0d6-861dff98f1d1'>httpget/wait/7c518235-4e72-4563-a0d6-861dff98f1d1</a> (expect text response '.')";
-    body += "<hr><b>API to wait for job using Websocket method:</b>";
+    body += "<hr><b>API intended to be called by printer/proxy to wait for job using Websocket:</b>";
     body += "<br>  ws://mscps-notif/ws/wait (expect '.' character as response)";
     body += "<br>  ws://mscps-notif/ws/wait/7c518235-4e72-4563-a0d6-861dff98f1d1 (expect '.' character as response)";
     body += "</html>";
@@ -123,10 +124,10 @@ function m_notifyPrinter(req, res, printerId) {
 //
 // This REST endpoint is intended to be called by the cloud service side. It lets the proxy
 // or printer know that there's a new print job to print. 'printerId' can optionally be provided.
-// E.g., if "/notify" is given, all printers are notified.
+// E.g., if "/notify" (or "/mcp/notify", for BC) is given, all printers are notified.
 //       if "/notify/123456" is given, only printer with ID "123456" is notified.
 //
-app.all("/notify(/:printerId)?", function(req, res, next) {
+app.all("(/mcp)?/notify(/:printerId)?", function(req, res, next) {
     if (req.method != "GET" && req.method != "POST") {
         next();
         return;
