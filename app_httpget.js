@@ -47,7 +47,8 @@ function m_wait(req, res, printerId) {
 
 //
 // This is the hanging-GET endpoint. The GET response is deferred until notification arrives.
-// It is called by the printer or proxy as a way to register for notification.
+// It is called by the printer or proxy to get notifications from the cloud print service.
+// E.g., there's a print job to print.
 //
 router.get("/wait", function(req, res) {
     m_wait(req, res, null);

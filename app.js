@@ -70,7 +70,7 @@ app.use("/ws", app_ws);
 app.get("/", function(req, res) {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
-    var body = "<html><b>Common API from PC/service side:</b>"
+    var body = "<html><b>Example calls from PC or the FCP service side:</b>"
     body += "<br>  There are " + m_printers.length + " printer(s) waiting to be notified.";
     body += "<br>  <a href='notify'>notify</a>";
     body += "<br>  <a href='notify/7c518235-4e72-4563-a0d6-861dff98f1d1'>notify/7c518235-4e72-4563-a0d6-861dff98f1d1</a> (for example)";
@@ -121,19 +121,21 @@ function m_notifyPrinter(req, res, printerId) {
 };
 
 //
-// This GET endpoint notifies all outstanding notification sessions.
+// This REST endpoint is intended to be called by the cloud service side. It lets the proxy
+// or printer know that there's a new print job to print. 'printerId' can optionally be provided.
+// E.g., if "/notify" is given, all printers are notified.
+//       if "/notify/123456" is given, only printer with ID "123456" is notified.
 //
-app.get("/notify", function(req, res) {
-    m_notifyPrinter(req, res, null);
-});
-
-//
-// This GET endpoint notifies the sessions whose ID matches.
-// E.g., if "/notify/123456" is given, the notification is processed on sessions whose [printer] ID
-// is "123456".
-//
-app.get("/notify/:printerId", function(req, res) {
+app.all("/notify(/:printerId)?", function(req, res, next) {
+    if (req.method != "GET" && req.method != "POST") {
+        next();
+        return;
+    }
     var printerId = req.params.printerId;
+    if (g_verbose) {
+        console.log("[app.js] notifying " + 
+            (printerId != null ? "printer \"" + printerId.toString() + "\"..." : "all printers..."));
+    }
     m_notifyPrinter(req, res, printerId);
 });
 
