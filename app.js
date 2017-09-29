@@ -128,7 +128,7 @@ function m_notifyPrinter(req, res, printerId) {
 //       if "/notify/123456" is given, only printer with ID "123456" is notified.
 //
 app.all("(/mcp)?/notify(/:printerId)?", function(req, res, next) {
-    if (req.method != "GET" && req.method != "POST") {
+    if (req.method != "GET" && req.method != "PUT") {
         next();
         return;
     }
