@@ -70,8 +70,13 @@ app.use("/ws", app_ws);
 app.get("/", function(req, res) {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
-    var body = "<html><b>Example calls from FCP service to notify that a new print job is available:</b>"
-    body += "<br>  There are " + m_printers.length + " printer(s) waiting to be notified.";
+    var body = "<html><h1>Welcome to FCP notification service homepage.</h1>"
+    body += "<br>There are " + m_printers.length + " printer(s) waiting to be notified:<br>";
+    for (var i = 0; i < m_printers.length; ++i) {
+        body += "&nbsp;&nbsp;" + (i+1) + ") " + m_printers[i].Id + "<br>";
+    }
+    body += "<hr>";
+    body += "<b>Example calls from FCP service to notify that a new print job is available:</b>"
     body += "<br>  <a href='notify'>notify</a>";
     body += "<br>  <a href='mcp/notify'>mcp/notify</a> (deprecated)";
     body += "<br>  <a href='notify/7c518235-4e72-4563-a0d6-861dff98f1d1'>notify/7c518235-4e72-4563-a0d6-861dff98f1d1</a>";
@@ -124,7 +129,7 @@ function m_notifyPrinter(req, res, printerId) {
 //
 // This REST endpoint is intended to be called by the cloud service side. It lets the proxy
 // or printer know that there's a new print job to print. 'printerId' can optionally be provided.
-// E.g., if "/notify" (or "/mcp/notify", for BC) is given, all printers are notified.
+// E.g., if "/notify" (or deprecated "/mcp/notify") is given, all printers are notified.
 //       if "/notify/123456" is given, only printer with ID "123456" is notified.
 //
 app.all("(/mcp)?/notify(/:printerId)?", function(req, res, next) {
@@ -148,7 +153,12 @@ app.all("(/mcp)?/notify(/:printerId)?", function(req, res, next) {
 app.get("/status", function(req, res) {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
-    res.end("<html>There are currently <b>" + m_printers.length + "</b> printers waiting.</html>");
+    var body = "<html>There are currently <b>" + m_printers.length + "</b> printers waiting...<br>";
+    for (var i = 0; i < m_printers.length; ++i) {
+        body += "&nbsp;" + (i+1) + ". " + m_printers[i].Id + "<br>";
+    }
+    body += "</html>";
+    res.end(body);
 });
 
 //
