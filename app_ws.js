@@ -30,20 +30,15 @@ function m_getPrinterId(url) {
     if (url.startsWith(WaitResource)) {
         url = url.replace(WaitResource, "");
         if (url.length == 0 || url == "/") {
-            // No printerId given in the request
-            if (g_verbose) {
-                console.log("[app_ws.js] m_getPrinterId: request has no printerId");
-            }
         } else if (url.startsWith("/")) {
             result = url.slice(1);
             if (g_verbose) {
                 console.log("[app_ws.js] m_getPrinterId: printerId: " + result);
             }
-        } else {
-            if (g_verbose) {
-                console.log("[app_ws.js] m_getPrinterId: request has no printerId, url: " + url);
-            }
         }
+    }
+    if (g_verbose) {
+        console.log("[app_ws.js] m_getPrinterId: url: " + url + ", printerId: " + result);
     }
     return result;
 }
@@ -56,10 +51,12 @@ var m_wss = new wsserver({server: g_server});
 m_wss.on("connection", function(ws, req) {
     var key = ws;
     var printerId = m_getPrinterId(req.url);
+    g_addHistory("API", "[websocket] open: " + printerId + "(" + key + ")");
 
     ws.on("message", function(message) {
         console.log("[app_ws.js] websocket received a message: " + message);
     }).on("close", function() {
+        g_addHistory("API", "[websocket] close: " + printerId + "(" + key + ")");
         var printer = g_findPrinter(ws, true);
         if (g_verbose && printer != null) {
             console.log("[app_ws.js] printer {" + printer.ClientInfo + " (id=" + printerId + ")} removed (closed), numPrinters=" + g_getPrinterCount());

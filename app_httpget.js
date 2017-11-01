@@ -22,6 +22,7 @@ function m_notify(printer) {
 //
 function m_wait(req, res, printerId) {
     var key = g_getClientInfo(req.socket);
+    g_addHistory("API", "[httpget] open: " + printerId + "(" + key + ")");
     var printer = g_findPrinter(key, false);
     if (printer != null) {
         printer.Id = printerId;
@@ -38,6 +39,7 @@ function m_wait(req, res, printerId) {
 
     // Schedule a cleanup if the client closes HTTP connection
     res.on("close", function() {
+        g_addHistory("API", "[httpget] close: " + printerId + "(" + key + ")");
         var printer = g_findPrinter(key, true);
         if (printer != null) {
             console.log("[app_httpget.js] printer {" + key + " (id=" + printer.Id + ")} removed, numPrinters=" + g_getPrinterCount());

@@ -1,3 +1,4 @@
+var dateformat = require("date-format");
 var http = require("http");
 var express = require("express");
 var app = express();
@@ -20,6 +21,17 @@ g_server = app.listen(app.get("port"), function() {
 
 // Active notification sessions representing the connections to the printer or proxy.
 var m_printers = [];
+var m_history = [];
+
+g_addHistory = function(operation, msg) {
+    if (g_verbose || (operation == "API")) {
+        var history = {Timestamp: new Date(), Operation: operation, Msg: msg};
+        if (m_history.length > 100) {
+            m_history.pop();
+        }
+        m_history.splice(0, 0, history);
+    }
+}
 
 //
 // This function looks up the outstanding notification sessions, optionally removes the session
@@ -28,17 +40,22 @@ var m_printers = [];
 g_findPrinter = function(key, remove) {
     var result = null;
     var printers = [];
+    var history = "";
     for (var i = 0; i < m_printers.length; ++i) {
         if (key == m_printers[i].Key) {
             result = m_printers[i];
             if (!remove) {
                 break;
             }
+            history += m_printers[i].Id + "(" + m_printers[i].Key.toString() + ") ";
         } else {
             printers.push(m_printers[i]);
         }
     }
     if (remove) {
+        if (history != "") {
+            g_addHistory("Remove", history);
+        }
         m_printers = printers;
     }
     return result;
@@ -50,6 +67,7 @@ g_addPrinter = function(printer) {
         console.log("[app.js] WARNING: duplicate printer added, the previous entry has been removed.")
     }
     m_printers.push(printer);
+    g_addHistory("Wait", printer.Id + "(" + printer.Key.toString() + ")");
 };
 
 g_getPrinterCount = function() {
@@ -57,6 +75,11 @@ g_getPrinterCount = function() {
 };
 
 g_removeAllPrinters = function() {
+    var history = "";
+    for (var i = 0; i < m_printers.length; ++i) {
+        history += m_printers[i].Id + "(" + m_printers[i].Key.toString() + ")";
+    }
+    g_addHistory("RemoveAll", history);
     m_printers = [];
 };
 
@@ -71,7 +94,8 @@ app.get("/", function(req, res) {
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
     var body = "<html><h1>Welcome to FCP notification service homepage.</h1>"
-    body += "<br>There are " + m_printers.length + " printer(s) waiting to be notified:<br>";
+    body += "<br>View notification <a href='history'>history</a>.<br>";
+    body += "There are " + m_printers.length + " printer(s) waiting to be notified:<br>";
     for (var i = 0; i < m_printers.length; ++i) {
         body += "&nbsp;&nbsp;" + (i+1) + ") " + m_printers[i].Id + "<br>";
     }
@@ -110,6 +134,8 @@ function m_notifyPrinter(req, res, printerId) {
     // Call the Notify handler
     body = "Notifying " + notifyList.length + " printer(s)...";
     for (var i = 0; i < notifyList.length; ++i) {
+        var history = notifyList[i].Id + "(" + m_printers[i].Key.toString() + ")";
+        g_addHistory("Notify", history);
         if (notifyList[i].Notify(notifyList[i])) {
             removeList.push(notifyList[i].Key);
         }
@@ -138,14 +164,33 @@ app.all("(/mcp)?/notify(/:printerId)?", function(req, res, next) {
         return;
     }
     var printerId = req.params.printerId;
+    var history = (printerId != null) ? "notifying printer \"" + printerId.toString() + "\"..." :
+        "notifying all printers...";
+    g_addHistory("API", history);
     if (g_verbose) {
-        console.log("[app.js] notifying " + 
-            (printerId != null ? "printer \"" + printerId.toString() + "\"..." : "all printers..."));
+        console.log("[app.js] " + history);
     }
     m_notifyPrinter(req, res, printerId);
 });
 
 // ---------- Status APIs ----------
+//
+// This GET endpoint returns notification history, in plain text.
+// It is used by the notification web portal.
+//
+app.get("/history", function(req, res) {
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.setHeader("cache-control", "no-cache");
+    var body = "";
+    for (var i = 0; i < m_history.length; ++i) {
+        var history = m_history[i];
+        body += "[" + dateformat.asString("yy/MM/dd hh:mm:ss", history.Timestamp) + "] ";
+        body += history.Operation + ": ";
+        body += history.Msg + "\r\n";
+    }
+    res.end(body);
+});
+
 //
 // This GET endpoint returns the number of active notification sessions, in HTML.
 // It is used by the notification web portal.
