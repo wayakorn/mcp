@@ -1,4 +1,4 @@
-var dateformat = require("date-format");
+var dateFormat = require("dateformat");
 var http = require("http");
 var express = require("express");
 var app = express();
@@ -184,7 +184,7 @@ app.get("/history", function(req, res) {
     var body = "";
     for (var i = 0; i < m_history.length; ++i) {
         var history = m_history[i];
-        body += "[" + dateformat.asString("yy/MM/dd hh:mm:ss", history.Timestamp) + "] ";
+        body += "[" + dateFormat(history.Timestamp, "mm/dd/yy hh:MM:ss TT Z") + "] ";
         body += history.Operation + ": ";
         body += history.Msg + "\r\n";
     }
