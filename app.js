@@ -184,7 +184,7 @@ app.get("/history", function(req, res) {
     var body = "";
     for (var i = 0; i < m_history.length; ++i) {
         var history = m_history[i];
-        body += "[" + dateFormat(history.Timestamp, "mm/dd/yy hh:MM:ss TT Z") + "] ";
+        body += "[" + dateFormat(history.Timestamp, "mm/dd/yy HH:MM:ss Z") + "] ";
         body += history.Operation + ": ";
         body += history.Msg + "\r\n";
     }
